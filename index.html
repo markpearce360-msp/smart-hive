@@ -1,0 +1,280 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Smart Hive</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+}
+
+h1 {
+    margin-bottom: 30px;
+}
+
+.card {
+    background: white;
+    max-width: 450px;
+    margin: 15px auto;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.label {
+    font-size: 18px;
+}
+
+.value {
+    font-size: 32px;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+.status {
+    font-size: 22px;
+    font-weight: bold;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>🐝 SMART HIVE</h1>
+
+<div class="card">
+    <div class="label">Select Hive</div>
+    <select id="hiveSelect">
+        <option value="Hive001">Hive 001</option>
+        <option value="Hive002">Hive 002</option>
+        <option value="Hive003">Hive 003</option>
+        <option value="Hive004">Hive 004</option>
+        <option value="Hive005">Hive 005</option>
+        <option value="Hive006">Hive 006</option>
+        <option value="Hive007">Hive 007</option>
+        <option value="Hive008">Hive 008</option>
+        <option value="Hive009">Hive 009</option>
+        <option value="Hive010">Hive 010</option>
+        <option value="Hive011">Hive 011</option>
+        <option value="Hive012">Hive 012</option>
+        <option value="Hive013">Hive 013</option>
+        <option value="Hive014">Hive 014</option>
+        <option value="Hive015">Hive 015</option>
+        <option value="Hive016">Hive 016</option>
+        <option value="Hive017">Hive 017</option>
+        <option value="Hive018">Hive 018</option>
+        <option value="Hive019">Hive 019</option>
+        <option value="Hive020">Hive 020</option>
+        <option value="Hive021">Hive 021</option>
+        <option value="Hive022">Hive 022</option>
+        <option value="Hive023">Hive 023</option>
+        <option value="Hive024">Hive 024</option>
+        <option value="Hive025">Hive 025</option>
+    </select>
+</div>
+<div class="card">
+    <div class="label">Hive</div>
+    <div class="value" id="hiveName">Hive 001</div>
+</div>
+
+<div class="card">
+    <div class="label">Weight</div>
+    <div class="value" id="weight">Loading...</div>
+</div>
+
+<div class="card">
+    <div class="label">Temperature</div>
+    <div class="value" id="temperature">Loading...</div>
+</div>
+
+<div class="card">
+    <div class="label">Humidity</div>
+    <div class="value" id="humidity">Loading...</div>
+</div>
+
+<div class="card">
+    <div class="label">Status</div>
+    <div class="status" id="status">🟢 HIVE NORMAL</div>
+</div>
+
+<div class="card">
+    <div class="label">Weight History</div>
+    <canvas id="weightChart"></canvas>
+</div>
+
+<script>
+
+const supabaseUrl = "https://wqbkbjogeptvuuvcmefz.supabase.co";
+
+const supabaseKey = "sb_publishable_CL56nK5r-Ku5U2dXQbl5Kw_p19Bilbz";
+
+
+async function getHiveData() {
+
+    try {
+
+        const response = await fetch(
+            supabaseUrl +
+            "/rest/v1/hive_readings?Hive_id=eq." + document.getElementById("hiveSelect").value + "&order=ID.desc&limit=1",
+        
+            
+            
+            {
+                headers: {
+                    "apikey": supabaseKey,
+                    "Authorization": "Bearer " + supabaseKey
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Supabase returned " + response.status);
+        }
+
+        const data = await response.json();
+
+        if (data.length > 0) {
+
+            const hive = data[0];
+
+            document.getElementById("hiveName").textContent =
+            document.getElementById("hiveSelect").value;
+
+            document.getElementById("weight").textContent =
+                Number(hive.Weight).toFixed(1) + " g";
+
+            document.getElementById("temperature").textContent =
+                Number(hive.Temperature).toFixed(1) + " °C";
+
+            document.getElementById("humidity").textContent =
+                Number(hive.Humidity).toFixed(1) + " %";
+
+            document.getElementById("status").textContent =
+                "🟢 HIVE NORMAL";
+
+        } else {
+
+            document.getElementById("weight").textContent = "No data";
+            document.getElementById("temperature").textContent = "No data";
+            document.getElementById("humidity").textContent = "No data";
+            document.getElementById("status").textContent = "⚠️ NO DATA";
+
+        }
+
+    } catch (error) {
+
+        console.log(error);
+
+        document.getElementById("weight").textContent = "Error";
+        document.getElementById("temperature").textContent = "Error";
+        document.getElementById("humidity").textContent = "Error";
+        document.getElementById("status").textContent = "🔴 CONNECTION ERROR";
+
+    }
+}
+
+
+getHiveData();
+getWeightHistory();
+
+document.getElementById("hiveSelect").addEventListener("change", function() {
+    document.getElementById("hiveName").textContent =
+        this.value;
+
+    getHiveData();
+    getWeightHistory();
+});
+
+let weightChart;
+
+async function getWeightHistory() {
+
+    const hiveID = document.getElementById("hiveSelect").value;
+
+    try {
+
+        const response = await fetch(
+            supabaseUrl +
+            "/rest/v1/hive_readings?Hive_id=eq." +
+            hiveID +
+            "&order=ID.desc&limit=200",
+            {
+                headers: {
+                    "apikey": supabaseKey,
+                    "Authorization": "Bearer " + supabaseKey
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        data.reverse();
+
+        const labels = data.map(row => row.ID);
+        const weights = data.map(row => Number(row.Weight));
+
+        const ctx = document.getElementById("weightChart");
+
+        if (weightChart) {
+            weightChart.destroy();
+        }
+
+        weightChart = new Chart(ctx, {
+            type: "line",
+
+            data: {
+                labels: labels,
+
+                datasets: [{
+                    label: "Weight (g)",
+                    data: weights,
+                    tension: 0.2
+                }]
+            },
+
+            options: {
+                responsive: true,
+
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Reading"
+                        }
+                    },
+
+                    y: {
+                        title: {
+                            display: true,
+                            text: "Weight (g)"
+                        }
+                    }
+                }
+            }
+        });
+
+    } catch (error) {
+
+        console.log("Graph error:", error);
+
+    }
+}
+
+
+</script>
+
+</body>
+</html>
+```
