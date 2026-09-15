@@ -105,6 +105,11 @@ h1 {
 </div>
 
 <div class="card">
+    <div class="label">Last Reading</div>
+    <div class="value" id="lastReading">Loading...</div>
+</div>
+
+<div class="card">
     <div class="label">Status</div>
     <div class="status" id="status">🟢 HIVE NORMAL</div>
 </div>
@@ -160,6 +165,9 @@ async function getHiveData() {
 
             document.getElementById("humidity").textContent =
                 Number(hive.Humidity).toFixed(1) + " %";
+
+             document.getElementById("lastReading").textContent =
+                new Date(hive.created_at).toLocaleString();   
 
             document.getElementById("status").textContent =
                 "🟢 HIVE NORMAL";
