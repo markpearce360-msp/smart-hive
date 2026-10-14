@@ -292,6 +292,24 @@ canvas {
     </div>
 
     <div class="card">
+        <h2>🐝 Bees In Today</h2>
+        <div class="value" id="beesIn">--</div>
+        <div>bees entered</div>
+    </div>
+
+    <div class="card">
+        <h2>🐝 Bees Out Today</h2>
+        <div class="value" id="beesOut">--</div>
+        <div>bees left</div>
+    </div>
+
+    <div class="card">
+        <h2>📈 Net Change Today</h2>
+        <div class="value" id="beeNet">--</div>
+        <div>in minus out</div>
+    </div>
+
+    <div class="card">
         <h2>📡 Status</h2>
         <div class="value" id="status">--</div>
     </div>
@@ -370,6 +388,8 @@ function changeHive() {
         document.getElementById("hiveSelect").value;
 
     loadLatestReading();
+
+    loadBeeCounts();
 
     loadAlarm();
 
@@ -499,6 +519,72 @@ async function loadLatestReading() {
 
         document.getElementById("status").textContent =
             "ERROR";
+
+    }
+
+}
+
+
+/* ============================
+   LOAD TODAY'S BEE COUNTS
+   Each uploaded row contains the
+   bee counts since the last upload.
+   Add today's rows to get daily totals.
+============================ */
+
+async function loadBeeCounts() {
+
+    try {
+
+        // Use the visitor's local date to find the start of today.
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const startOfToday = today.toISOString();
+
+        const url =
+            SUPABASE_URL +
+            "/rest/v1/hive_readings" +
+            "?Hive_id=eq." +
+            encodeURIComponent(currentHive) +
+            "&select=created_at,Bees_in,Bees_out" +
+            "&created_at=gte." +
+            encodeURIComponent(startOfToday) +
+            "&order=created_at.desc" +
+            "&limit=500";
+
+        const response = await fetch(url, {
+            headers: getHeaders()
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error("Supabase bee-count request failed (" +
+                response.status + "): " + errorText);
+        }
+
+        const readings = await response.json();
+
+        let totalIn = 0;
+        let totalOut = 0;
+
+        readings.forEach(reading => {
+            totalIn += Number(reading.Bees_in) || 0;
+            totalOut += Number(reading.Bees_out) || 0;
+        });
+
+        document.getElementById("beesIn").textContent = totalIn;
+        document.getElementById("beesOut").textContent = totalOut;
+
+        const net = totalIn - totalOut;
+        const netElement = document.getElementById("beeNet");
+        netElement.textContent = net > 0 ? "+" + net : String(net);
+
+    } catch (error) {
+
+        console.error("Bee-count error:", error);
+        document.getElementById("beesIn").textContent = "--";
+        document.getElementById("beesOut").textContent = "--";
+        document.getElementById("beeNet").textContent = "--";
 
     }
 
@@ -1256,6 +1342,8 @@ function drawChart(data) {
 
 loadLatestReading();
 
+loadBeeCounts();
+
 loadAlarm();
 
 loadWeightHistory();
@@ -1268,6 +1356,8 @@ loadWeightHistory();
 setInterval(() => {
 
     loadLatestReading();
+
+    loadBeeCounts();
 
     loadAlarm();
 
